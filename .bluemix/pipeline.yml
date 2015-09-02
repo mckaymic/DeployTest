@@ -1,48 +1,88 @@
 ---
-# This describes a basic build and deploy pipeline for the application.
-# The default pipeline that would be created is not sufficient because the
-# application depends on another project that does not currently have published
-# maven artifacts.
-#
-# Some documentation can be found here:
-# https://www.ng.bluemix.net/docs/manageapps/deployingapps.html#sharetextpipelines
-#
-# This support is currently described as "in development", so the YAML format
-# could change at any time.  The easiest way to recreate this file is to create
-# a pipeline and then append /yaml to the URL, as follows:
-# GET <jazzhub url>/pipeline/user/project/yaml
 stages:
-- name: Build Stage
+- name: Extract & Build
   inputs:
   - type: git
     branch: master
   triggers:
   - type: commit
   jobs:
-  - name: Build
+  - name: Get changes
     type: builder
-    artifact_dir: questions-with-classifier-ega-war/target
-    build_type: maven
+    build_type: shell
     script: |-
       #!/bin/bash
-      # Clone and build supporting framework project
-      git clone https://github.com/watson-developer-cloud/framework-ega.git
-      cd framework-ega
-      mvn -B install
-      # Build application project
-      cd ..
-      mvn -B package
-      # Copy manifest file to archive directory so it can be used by the deploy job
-      cp manifest.yml ${ARCHIVE_DIR}
-- name: Deploy Stage
+      # This script just dumps the changes included in this build into a file named changelog.txt
+      # This change log can be used later to be included in notifications
+      git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
+
+      cat changelog.txt
+- name: Push to test
   inputs:
   - type: job
-    stage: Build Stage
-    job: Build
+    stage: Extract & Build
+    job: Get changes
   triggers:
   - type: stage
   jobs:
-  - name: Deploy to dev
+  - name: Deploy Blue
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie-test
+    script: |
+      #!/bin/bash
+      cd private/deploy
+      cf push "${CF_APP}-blue" -n "${CF_APP}"
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Drop Green
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie-test
+    script: |
+      #!/bin/bash
+      cf delete "${CF_APP}-green" --f
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Blue->Green
+    type: deployer
+    target:
+      url: ${CF_TARGET_URL}
+      organization: ${CF_ORGANIZATION}
+      space: ${CF_SPACE}
+      application: ${CF_APP}-test
+    script: |
+      #!/bin/bash
+      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+  - name: Notify
+    type: builder
+- name: Run tests
+  inputs:
+  - type: job
+    stage: Push to test
+    job: Notify
+  triggers:
+  - type: stage
+  jobs:
+  - name: Saucelabs
+    type: builder
+- name: Push to prod
+  inputs:
+  - type: job
+    stage: Run tests
+    job: Saucelabs
+  triggers:
+  - type: stage
+  jobs:
+  - name: Deploy Blue
     type: deployer
     target:
       url: ${CF_TARGET_URL}
@@ -51,6 +91,34 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf push "${CF_APP}" -p questions-with-classifier-ega-war.zip
-      # View logs
+      cd private/deploy
+      cf push "${CF_APP}-blue" -n "${CF_APP}"
+
+      # view logs
       #cf logs "${CF_APP}" --recent
+  - name: Drop Green
+    type: deployer
+    target:
+    target:
+      url: ${CF_TARGET_URL}
+      organization: ${CF_ORGANIZATION}
+      space: ${CF_SPACE}
+      application: ${CF_APP}
+    script: |
+      #!/bin/bash
+      cf delete "${CF_APP}-green" --f
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Blue->Green
+    type: deployer
+    target:
+      url: ${CF_TARGET_URL}
+      organization: ${CF_ORGANIZATION}
+      space: ${CF_SPACE}
+      application: ${CF_APP}
+    script: |
+      #!/bin/bash
+      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+  - name: Notify
+    type: builder
