@@ -15,4 +15,4 @@ Use [![Deploy to Bluemix](https://bluemix.net/deploy/button.png)](https://bluemi
 
 ## Scale
 
-- Use New Relic to monitor the site
+- Use [New Relic](docs/NewRelic.md) to monitor the site
