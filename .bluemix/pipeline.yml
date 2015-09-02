@@ -31,11 +31,11 @@ stages:
       url: ${CF_TARGET_URL}
       organization: ${CF_ORGANIZATION}
       space: ${CF_SPACE}
-      application: ${CF_APP}-test
+      application: ${CF_APP}
     script: |
       #!/bin/bash
       cd private/deploy
-      cf push "${CF_APP}-blue" -n "${CF_APP}"
+      cf push "${CF_APP}-test-blue" -n "${CF_APP}-test"
 
       # view logs
       #cf logs "${CF_APP}" --recent
@@ -45,23 +45,20 @@ stages:
       url: ${CF_TARGET_URL}
       organization: ${CF_ORGANIZATION}
       space: ${CF_SPACE}
-      application: ${CF_APP}-test
+      application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf delete "${CF_APP}-green" --f
-
-      # view logs
-      #cf logs "${CF_APP}" --recent
+      cf delete "${CF_APP}-test-green" --f
   - name: Blue->Green
     type: deployer
     target:
       url: ${CF_TARGET_URL}
       organization: ${CF_ORGANIZATION}
       space: ${CF_SPACE}
-      application: ${CF_APP}-test
+      application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+      cf rename "${CF_APP}-test-blue" "${CF_APP}-test-green"
   - name: Notify
     type: builder
 - name: Run tests
