@@ -34,11 +34,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cd private/deploy
       cf push "${CF_APP}-test-blue" -n "${CF_APP}-test"
-
-      # view logs
-      #cf logs "${CF_APP}" --recent
   - name: Drop Green
     type: deployer
     target:
@@ -88,11 +84,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cd private/deploy
       cf push "${CF_APP}-blue" -n "${CF_APP}"
-
-      # view logs
-      #cf logs "${CF_APP}" --recent
   - name: Drop Green
     type: deployer
     target:
