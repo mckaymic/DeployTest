@@ -17,61 +17,11 @@ stages:
       git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
 
       cat changelog.txt
-- name: Push to test
+- name: Extract & Build
   inputs:
   - type: job
-    stage: Extract & Build
+    stage: Get changes
     job: Get changes
-  triggers:
-  - type: stage
-  jobs:
-  - name: Deploy Blue
-    type: deployer
-    target:
-      url: ${CF_TARGET_URL}
-      organization: ${CF_ORGANIZATION}
-      space: ${CF_SPACE}
-      application: ${CF_APP}
-    script: |
-      #!/bin/bash
-      #cf push "${CF_APP}-test-blue" -n "${CF_APP}-test"
-  - name: Drop Green
-    type: deployer
-    target:
-      url: ${CF_TARGET_URL}
-      organization: ${CF_ORGANIZATION}
-      space: ${CF_SPACE}
-      application: ${CF_APP}
-    script: |
-      #!/bin/bash
-      #cf delete "${CF_APP}-test-green" --f
-  - name: Blue->Green
-    type: deployer
-    target:
-      url: ${CF_TARGET_URL}
-      organization: ${CF_ORGANIZATION}
-      space: ${CF_SPACE}
-      application: ${CF_APP}
-    script: |
-      #!/bin/bash
-      #cf rename "${CF_APP}-test-blue" "${CF_APP}-test-green"
-  - name: Notify
-    type: builder
-- name: Run tests
-  inputs:
-  - type: job
-    stage: Push to test
-    job: Notify
-  triggers:
-  - type: stage
-  jobs:
-  - name: Saucelabs
-    type: builder
-- name: Setup prod
-  inputs:
-  - type: job
-    stage: Run tests
-    job: Saucelabs
   triggers:
   - type: commit
   properties:
@@ -79,7 +29,7 @@ stages:
     value: ''
     type: secure
   jobs:
-  - name: New Relic
+  - name: NewRelic
     type: builder
     build_type: shell
     script: |-
@@ -97,7 +47,7 @@ stages:
   inputs:
   - type: job
     stage: Setup prod
-    job: New Relic
+    job: NewRelic
   triggers:
   - type: stage
   jobs:
