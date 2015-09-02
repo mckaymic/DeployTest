@@ -1,3 +1,7 @@
+if(process.env.NEW_RELIC_LICENSE_KEY && process.env.NEW_RELIC_LICENSE_KEY !== "") {
+  require('newrelic');
+}
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');

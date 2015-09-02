@@ -34,7 +34,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf push "${CF_APP}-test-blue" -n "${CF_APP}-test"
+      #cf push "${CF_APP}-test-blue" -n "${CF_APP}-test"
   - name: Drop Green
     type: deployer
     target:
@@ -44,7 +44,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf delete "${CF_APP}-test-green" --f
+      #cf delete "${CF_APP}-test-green" --f
   - name: Blue->Green
     type: deployer
     target:
@@ -54,7 +54,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf rename "${CF_APP}-test-blue" "${CF_APP}-test-green"
+      #cf rename "${CF_APP}-test-blue" "${CF_APP}-test-green"
   - name: Notify
     type: builder
 - name: Run tests
@@ -67,11 +67,37 @@ stages:
   jobs:
   - name: Saucelabs
     type: builder
-- name: Push to prod
+- name: Setup prod
   inputs:
   - type: job
     stage: Run tests
     job: Saucelabs
+  triggers:
+  - type: commit
+  properties:
+  - name: NEW_RELIC_LICENSE_KEY
+    value: ''
+    type: secure
+  jobs:
+  - name: New Relic
+    type: builder
+    build_type: shell
+    script: |-
+      #!/bin/bash
+      if [ -z ${var+x} ];
+      then
+        echo "NewRelic is disabled.  Please specify your API NewRelic API key.";
+      else
+        npm install newrelic
+        cp node_modules/newrelic/newrelic.js ./
+        mkdir .newrelic
+        echo ${NEW_RELIC_LICENSE_KEY} > .newrelic/key;
+      fi
+- name: Push to prod
+  inputs:
+  - type: job
+    stage: Setup prod
+    job: New Relic
   triggers:
   - type: stage
   jobs:
@@ -84,7 +110,13 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf push "${CF_APP}-blue" -n "${CF_APP}"
+      export NEW_RELIC_LICENSE_KEY = `cat .newrelic/key`
+      if [ -f .newrelic/key ]; then
+        cf push "${CF_APP}-blue" -n "${CF_APP}" --no-start
+        cf set-env "${CF_APP}-blue" NEW_RELIC_LICENSE_KEY "${NEW_RELIC_LICENSE_KEY}"
+        cf set-env "${CF_APP}-blue" NEW_RELIC_APP_NAME "${CF_APP}"
+      fi
+      cf start
   - name: Drop Green
     type: deployer
     target:
@@ -96,9 +128,6 @@ stages:
     script: |
       #!/bin/bash
       cf delete "${CF_APP}-green" --f
-
-      # view logs
-      #cf logs "${CF_APP}" --recent
   - name: Blue->Green
     type: deployer
     target:
