@@ -1,0 +1,123 @@
+---
+stages:
+- name: Extract & Build
+  inputs:
+  - type: git
+    branch: master
+  triggers:
+  - type: commit
+  jobs:
+  - name: Get changes
+    type: builder
+    build_type: shell
+    script: |-
+      #!/bin/bash
+      # This script just dumps the changes included in this build into a file named changelog.txt
+      # This change log can be used later to be included in notifications
+      git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
+
+      cat changelog.txt
+- name: Push to test
+  inputs:
+  - type: job
+    stage: Extract & Build
+    job: Get changes
+  triggers:
+  - type: stage
+  jobs:
+  - name: Deploy Blue
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie-test
+    script: |
+      #!/bin/bash
+      cd private/deploy
+      cf push "${CF_APP}-blue" -n "${CF_APP}"
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Drop Green
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie-test
+    script: |
+      #!/bin/bash
+      cf delete "${CF_APP}-green" --f
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Blue->Green
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie-test
+    script: |
+      #!/bin/bash
+      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+  - name: Notify
+    type: builder
+- name: Run tests
+  inputs:
+  - type: job
+    stage: Push to test
+    job: Notify
+  triggers:
+  - type: stage
+  jobs:
+  - name: Saucelabs
+    type: builder
+- name: Push to prod
+  inputs:
+  - type: job
+    stage: Run tests
+    job: Saucelabs
+  triggers:
+  - type: stage
+  jobs:
+  - name: Deploy Blue
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie
+    script: |
+      #!/bin/bash
+      cd private/deploy
+      cf push "${CF_APP}-blue" -n "${CF_APP}"
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Drop Green
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie
+    script: |
+      #!/bin/bash
+      cf delete "${CF_APP}-green" --f
+
+      # view logs
+      #cf logs "${CF_APP}" --recent
+  - name: Blue->Green
+    type: deployer
+    target:
+      url: https://api.ng.bluemix.net
+      organization: IBM_Console
+      space: HyPops
+      application: goalie
+    script: |
+      #!/bin/bash
+      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+  - name: Notify
+    type: builder
