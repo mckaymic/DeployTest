@@ -22,7 +22,7 @@ stages:
     stage: Extract & Build
     job: Get changes
   triggers:
-  - type: commit
+  - type: stage
   properties:
   - name: NEW_RELIC_LICENSE_KEY
     value: ''
