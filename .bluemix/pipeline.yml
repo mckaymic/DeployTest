@@ -75,14 +75,14 @@ stages:
   - type: stage
   properties:
   - name: NEW_RELIC_LICENSE_KEY
-    value: 
+    value: xxx
   jobs:
   - name: New Relic
     type: builder
     build_type: shell
     script: |-
       #!/bin/bash
-      if [ -z ${NEW_RELIC_LICENSE_KEY+x} ];
+      if [ ${NEW_RELIC_LICENSE_KEY} == 'xxx' ];
       then
         echo "NewRelic is disabled.  Please specify your API NewRelic API key.";
       else
