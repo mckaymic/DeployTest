@@ -9,7 +9,7 @@ The application is a simple Node.js [Express 4](http://expressjs.com/) sample yo
 The various stages of the pipeline may require ids, trials, or subscriptions to independent service offering.
 Each tool included an explanation of how to get and use IDs for each service.
 
-Get started now with [![Deploy to Bluemix](https://bluemix.net/deploy/button.png)](https://bluemix.net/deploy?repository=https://github.com/mckaymic/DeployTest.git).
+Create your new IBM DevOps project now! [![Deploy to Bluemix](https://bluemix.net/deploy/button.png)](https://bluemix.net/deploy?repository=https://github.com/mckaymic/DeployTest.git).
 
 ## Build
 
