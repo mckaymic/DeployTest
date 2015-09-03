@@ -73,10 +73,6 @@ stages:
     job: Saucelabs
   triggers:
   - type: stage
-  properties:
-  - name: NEW_RELIC_LICENSE_KEY
-    value: ''
-    type: secure
   jobs:
   - name: New Relic
     type: builder
