@@ -12,37 +12,57 @@
 # a pipeline and then append /yaml to the URL, as follows:
 # GET <jazzhub url>/pipeline/user/project/yaml
 stages:
-- name: Build Stage
+- name: Build
   inputs:
   - type: git
     branch: master
   triggers:
   - type: commit
   jobs:
-  - name: Build
+  - name: Get changes
     type: builder
-    artifact_dir: questions-with-classifier-ega-war/target
-    build_type: maven
+    build_type: shell
     script: |-
       #!/bin/bash
-      # Clone and build supporting framework project
-      git clone https://github.com/watson-developer-cloud/framework-ega.git
-      cd framework-ega
-      mvn -B install
-      # Build application project
-      cd ..
-      mvn -B package
-      # Copy manifest file to archive directory so it can be used by the deploy job
-      cp manifest.yml ${ARCHIVE_DIR}
-- name: Deploy Stage
+      # This script just dumps the changes included in this build into a file named changelog.txt
+      # This change log can be used later to be included in notifications
+      git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
+      cat changelog.txt
+- name: Setup prod
   inputs:
   - type: job
-    stage: Build Stage
-    job: Build
+    stage: Build
+    job: Get changes
+  triggers:
+  - type: stage
+  properties:
+  - name: NEW_RELIC_LICENSE_KEY
+    value: ''
+    type: text
+  jobs:
+  - name: NewRelic
+    type: builder
+    build_type: shell
+    script: |-
+      #!/bin/bash
+      if [ -z ${NEW_RELIC_LICENSE_KEY+x} ];
+      then
+        echo "NewRelic is disabled.  Please specify your API NewRelic API key.";
+      else
+        npm install newrelic
+        cp node_modules/newrelic/newrelic.js ./
+        mkdir .newrelic
+        echo ${NEW_RELIC_LICENSE_KEY} > .newrelic/key;
+      fi
+- name: Deploy to prod
+  inputs:
+  - type: job
+    stage: Setup prod
+    job: NewRelic
   triggers:
   - type: stage
   jobs:
-  - name: Deploy to dev
+  - name: Deploy Blue
     type: deployer
     target:
       url: ${CF_TARGET_URL}
@@ -51,6 +71,34 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
-      cf push "${CF_APP}" -p questions-with-classifier-ega-war.zip
-      # View logs
-      #cf logs "${CF_APP}" --recent
+
+      export NEW_RELIC_LICENSE_KEY = `cat .newrelic/key`
+      if [ -f .newrelic/key ]; then
+        cf push "${CF_APP}-blue" -n "${CF_APP}" --no-start
+        cf set-env "${CF_APP}-blue" NEW_RELIC_LICENSE_KEY "${NEW_RELIC_LICENSE_KEY}"
+        cf set-env "${CF_APP}-blue" NEW_RELIC_APP_NAME "${CF_APP}"
+      fi
+      cf start
+  - name: Drop Green
+    type: deployer
+    target:
+    target:
+      url: ${CF_TARGET_URL}
+      organization: ${CF_ORGANIZATION}
+      space: ${CF_SPACE}
+      application: ${CF_APP}
+    script: |
+      #!/bin/bash
+      cf delete "${CF_APP}-green" --f
+  - name: Blue->Green
+    type: deployer
+    target:
+      url: ${CF_TARGET_URL}
+      organization: ${CF_ORGANIZATION}
+      space: ${CF_SPACE}
+      application: ${CF_APP}
+    script: |
+      #!/bin/bash
+      cf rename "${CF_APP}-blue" "${CF_APP}-green"
+  - name: Notify
+    type: builder
