@@ -75,7 +75,6 @@ stages:
   - type: stage
   properties:
   - name: NEW_RELIC_LICENSE_KEY
-    type: secure
   jobs:
   - name: New Relic
     type: builder
