@@ -21,8 +21,8 @@ new view on the impact of the software on the bottom line.
 ## Get started
 
 Start using New Relic with the sample application by following these steps:
-- Create a New Relic ID
-- Log in and copy your license key from account settings page
-- Edit the New Relic pipeline stage and provide the key
-- Rerun the New Relic and Production pipeline stages
+- [Sign into New Relic] (https://login.newrelic.com/login) or [create a New Relic account] (https://newrelic.com/signup)
+- Copy your license key from the account settings page
+- Edit the New Relic pipeline stage in the IBM DevOps Services Build and Deploy page for your project and provide the key in the environment variables tab
+- Rerun the New Relic stage.  This will trigger a production deploy as well
 - Refresh the New Relic dashboard to see the application metrics
