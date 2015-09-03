@@ -15,7 +15,6 @@ stages:
       # This script just dumps the changes included in this build into a file named changelog.txt
       # This change log can be used later to be included in notifications
       git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
-
       cat changelog.txt
 - name: Extract & Build
   inputs:
@@ -27,14 +26,14 @@ stages:
   properties:
   - name: NEW_RELIC_LICENSE_KEY
     value: ''
-    type: secure
+    type: text
   jobs:
   - name: NewRelic
     type: builder
     build_type: shell
     script: |-
       #!/bin/bash
-      if [ -z ${var+x} ];
+      if [ -z ${NEW_RELIC_LICENSE_KEY+x} ];
       then
         echo "NewRelic is disabled.  Please specify your API NewRelic API key.";
       else
@@ -60,6 +59,7 @@ stages:
       application: ${CF_APP}
     script: |
       #!/bin/bash
+
       export NEW_RELIC_LICENSE_KEY = `cat .newrelic/key`
       if [ -f .newrelic/key ]; then
         cf push "${CF_APP}-blue" -n "${CF_APP}" --no-start
