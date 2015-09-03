@@ -19,12 +19,18 @@ stages:
   triggers:
   - type: commit
   jobs:
-  - name: Changelog
+  - name: Build
     type: builder
-    build_type: shell
+    artifact_dir: questions-with-classifier-ega-war/target
+    build_type: maven
     script: |-
       #!/bin/bash
-      # This script just dumps the changes included in this build into a file named changelog.txt
-      # This change log can be used later to be included in notifications
-      git log ${GIT_COMMIT}..HEAD --graph --oneline > changelog.txt
-      cat changelog.txt
+      # Clone and build supporting framework project
+      git clone https://github.com/watson-developer-cloud/framework-ega.git
+      cd framework-ega
+      mvn -B install
+      # Build application project
+      cd ..
+      mvn -B package
+      # Copy manifest file to archive directory so it can be used by the deploy job
+      cp manifest.yml ${ARCHIVE_DIR}
