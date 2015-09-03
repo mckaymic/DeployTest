@@ -14,7 +14,6 @@ Create your new IBM DevOps project now! [![Deploy to Bluemix](https://bluemix.ne
 ## Build
 
 - Use IDS to build.
-
 - Use IBM DevOps Services projects to build and deploy the application to the IBM Bluemix platform
 - Use GitHub for source control and code review
 - Use OSS linting tools
